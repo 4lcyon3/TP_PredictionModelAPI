@@ -1,34 +1,61 @@
-import os
-import joblib
+import keras
+import pandas as pd
 import numpy as np
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+import joblib
+import os
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(BASE_DIR, "models")
+def entrenar_modelo(ruta_csv="dataset_entrenamiento_final.csv"):
+    df = pd.read_csv(ruta_csv)
+    le = LabelEncoder()
+    df["label"] = le.fit_transform(df["final_performance"])
 
-# Cargar artefactos una sola vez al iniciar Django
-rf_model = joblib.load(os.path.join(MODEL_DIR, "random_forest.joblib"))
-tf_model = tf.keras.models.load_model(os.path.join(MODEL_DIR, "tf_model"))
-preproc = joblib.load(os.path.join(MODEL_DIR, "preprocessor.joblib"))
+    X = df[["score_total"]].values
+    y = df["label"].values
 
-def scores_to_feature_vector(scores):
-    d = {}
-    for s in scores:
-        g = s['group_type']
-        d[g] = d.get(g, 0.0) + float(s['score'])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    feature_cols = preproc['feature_cols']
-    vec = np.array([d.get(col, 0.0) for col in feature_cols]).reshape(1,-1)
-    scaled = preproc['scaler'].transform(vec)
-    return scaled
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-def predict_student(scores):
-    X = scores_to_feature_vector(scores)
-    pred_rf = rf_model.predict(X)[0]
-    pred_tf = tf_model.predict(X).reshape(-1)[0]
-    pred_ens = float((pred_rf + pred_tf) / 2.0)
-    return {
-        "pred_rf": float(pred_rf),
-        "pred_tf": float(pred_tf),
-        "pred_ensemble": pred_ens
-    }
+    #Random Forest
+    rf = RandomForestClassifier(n_estimators=200, random_state=42)
+    rf.fit(X_train_scaled, y_train)
+
+    model = keras.Sequential([
+        keras.layers.Dense(16, activation='relu', input_shape=(1,)),
+        keras.layers.Dense(8, activation='relu'),
+        keras.layers.Dense(1, activation='sigmoid')
+    ])
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    model.fit(X_train_scaled, y_train, epochs=30, batch_size=4)
+
+    os.makedirs("modelos", exist_ok=True)
+    joblib.dump(rf, "modelos/random_forest.pkl")
+    joblib.dump(scaler, "modelos/scaler.pkl")
+    model.save("modelos/tf_model.h5")
+    joblib.dump(le, "modelos/label_encoder.pkl")
+
+    acc = rf.score(X_test_scaled, y_test)
+    print(f"Modelo entrenado. Accuracy RF: {acc:.2f}")
+
+def predecir(score_total):
+    rf = joblib.load("modelos/random_forest.pkl")
+    scaler = joblib.load("modelos/scaler.pkl")
+    le = joblib.load("modelos/label_encoder.pkl")
+
+    X_input = scaler.transform(np.array([[score_total]]))
+    pred_rf = rf.predict_proba(X_input)[0][1]
+
+    model = keras.saving.load_model("modelos/tf_model.h5")
+    pred_tf = model.predict(X_input)[0][0]
+
+    # Promedio entre ambos modelos
+    prob_final = (pred_rf + pred_tf) / 2
+    label_pred = le.inverse_transform([int(prob_final >= 0.5)])[0]
+
+    return {"probabilidad": float(prob_final), "rendimiento_predicho": label_pred}
