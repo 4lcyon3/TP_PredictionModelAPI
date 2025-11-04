@@ -1,16 +1,19 @@
+# predictor/views.py
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .ml_model import predecir
+from .ml_model import predict
 
 @csrf_exempt
 def predict_view(request):
-    if request.method == "POST":
-        data = json.loads(request.body.decode("utf-8"))
-        score = data.get("score_total")
-        if score is None:
-            return JsonResponse({"error": "Debe incluir 'score_total'."}, status=400)
-        
-        resultado = predecir(score)
-        return JsonResponse(resultado)
-    return JsonResponse({"message": "Use POST con JSON {'score_total': valor}."})
+    if request.method != "POST":
+        return JsonResponse({"detail":"Use POST"}, status=405)
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error":"Invalid JSON"}, status=400)
+    try:
+        res = predict(payload)
+        return JsonResponse(res)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
