@@ -1,7 +1,0 @@
-Django>=4.0
-djangorestframework
-pandas
-numpy
-scikit-learn
-tensorflow>=2.16
-joblib
