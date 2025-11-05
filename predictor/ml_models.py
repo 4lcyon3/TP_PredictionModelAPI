@@ -57,9 +57,6 @@ def train_all():
     joblib.dump(scaler, os.path.join(model_dir, "scaler.joblib"))
     nn.save(os.path.join(model_dir, "nn_model.h5"))
 
-    print("✅ Modelos guardados correctamente en 'data/models/'.")
-
-    # Devuelve métricas
     return {"rmse": rmse, "r2": r2}
 
 if __name__ == "__main__":
