@@ -111,6 +111,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+RF_MODEL_PATH = '/mnt/data/rf_model.pkl'
 
 
 # Static files (CSS, JavaScript, Images)
