@@ -19,7 +19,7 @@ def train_all():
     X = df[["persistente", "competente", "observador"]].values
 
     y = (X[:, 0] * 0.5 + X[:, 1] * 0.3 + X[:, 2] * 0.2) * np.random.uniform(0.8, 1.2, len(X))
-
+    y= 100 * y / np.max(y)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     scaler = StandardScaler()
