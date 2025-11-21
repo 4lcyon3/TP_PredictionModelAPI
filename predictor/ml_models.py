@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
@@ -19,7 +19,6 @@ def train_all():
     X = df[["persistente", "competente", "observador"]].values
 
     y = (X[:, 0] * 0.5 + X[:, 1] * 0.3 + X[:, 2] * 0.2) * np.random.uniform(0.8, 1.2, len(X))
-    y = y * 100
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -46,9 +45,11 @@ def train_all():
 
     rmse = np.sqrt(mean_squared_error(y_test, hybrid_pred))
     r2 = r2_score(y_test, hybrid_pred)
+    mae = mean_absolute_error(y_test, hybrid_pred)
     print(f"   Evaluación del modelo híbrido:")
     print(f"   RMSE = {rmse:.4f}")
     print(f"   R² = {r2:.4f}")
+    print(f"   MAE = {mae:.4f}")
 
     model_dir = "data/models"
     os.makedirs(model_dir, exist_ok=True)
